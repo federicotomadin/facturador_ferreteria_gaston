@@ -1,0 +1,18 @@
+# Business data (prices, suppliers, stock) must never be committed
+*.csv
+*.xlsx
+*.xls
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Dependencies and builds
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store

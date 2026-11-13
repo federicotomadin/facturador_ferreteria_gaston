@@ -1,0 +1,48 @@
+---
+description: NestJS + Prisma conventions for the backend API (money, stock, queries, validation)
+globs: backend/**/*.ts
+alwaysApply: false
+---
+
+# Backend (NestJS + Prisma)
+
+## Structure
+
+- One NestJS module per domain: `products`, `stock`, `sales`, `customers`, `suppliers`, `cash`, `auth`.
+- Controllers stay thin; business logic lives in services. Access the DB only through `PrismaService`.
+- Validate every request body with DTOs + `class-validator` (global `ValidationPipe` with `whitelist: true`).
+
+## Money
+
+- Always `Decimal` (`@db.Decimal(12, 2)`) in Prisma and `Prisma.Decimal` math in code. Never `Float` or JS `number` for prices/totals.
+- Store `unitPrice` on sale/purchase items: historical documents must not change when product prices change.
+
+## Stock
+
+- Every stock change writes a `StockMovement` row (ENTRY, SALE, ADJUSTMENT, RETURN). Never update `Product.stock` without one.
+- Anything touching stock + documents runs inside `prisma.$transaction`.
+- Decrement conditionally so concurrent sales can't oversell:
+
+```ts
+const { count } = await tx.product.updateMany({
+  where: { id: productId, stock: { gte: quantity } },
+  data: { stock: { decrement: quantity } },
+});
+if (count === 0) throw new BadRequestException(`Insufficient stock for product ${productId}`);
+```
+
+- Merge duplicate `productId` lines before processing a sale.
+
+## Queries
+
+- Fetch in batches (`where: { id: { in: ids } }`) and index with a `Map`; no per-item queries in loops (N+1). Supabase adds network latency per query.
+- Paginate list endpoints (products can be 10k+). Never return a full table.
+- Use `select` to return only the fields the client needs.
+
+## Database / Supabase
+
+- Prisma 7 with the `@prisma/adapter-pg` driver adapter; generated client lives in `src/generated/prisma` (import from `../generated/prisma/client.js`).
+- `DATABASE_URL` = Supabase transaction pooler, port 6543 (app runtime); `DIRECT_URL` = session pooler, port 5432 (migrations, configured in `prisma.config.ts`). Supabase's direct host is IPv6-only, so don't use it from Render.
+- Local DB: `docker compose up -d` at the repo root, exposed on port 5433.
+- Schema changes only via `npm run db:migrate` (Prisma 7's `migrate dev` no longer regenerates the client; the script does both); never edit the DB by hand.
+- Secrets only in `.env` (gitignored); keep `.env.example` updated.

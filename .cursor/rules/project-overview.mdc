@@ -1,0 +1,44 @@
+---
+description: Project overview, stack and global conventions for the hardware store invoicing and inventory app
+alwaysApply: true
+---
+
+# Hardware Store Stock Control
+
+Stock management app for a hardware store (Ferretería Gastón): sales are registered only to decrement stock.
+`plan.md` is the source of truth for scope and priorities; check it before adding features.
+
+## Stack
+
+| Layer    | Tech                          | Hosting               |
+| -------- | ----------------------------- | --------------------- |
+| Frontend | React + Vite + Tailwind CSS   | GitHub Pages (static) |
+| Backend  | Node.js + NestJS + TypeScript | Render (free tier)    |
+| Database | PostgreSQL                    | Supabase (free tier)  |
+| ORM      | Prisma                        | —                     |
+
+## Repository layout
+
+- `frontend/` — React app
+- `backend/` — NestJS API, Prisma schema in `backend/prisma/schema.prisma`
+
+## Language
+
+- All code in English: identifiers, DB tables/columns, comments, commit messages, API error messages.
+- Only user-facing UI text is in Spanish (Argentina).
+
+```ts
+// ❌ BAD
+const precioVenta = producto.precio; // precio final
+throw new BadRequestException('Stock insuficiente');
+
+// ✅ GOOD
+const salePrice = product.salePrice;
+throw new BadRequestException('Insufficient stock');
+```
+
+## Scope
+
+- Out of scope: payments, invoices/receipts and AFIP/ARCA. Don't add payment methods, invoice models or AFIP dependencies.
+- Prices are informative (weekly report totals); many products have price 0 and must still be sellable.
+- Prefer free-tier-friendly solutions; no paid services without asking.

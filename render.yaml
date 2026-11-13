@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: ferreteria-api
+    runtime: node
+    plan: free
+    # Same AWS region as the Supabase database (us-east-1)
+    region: virginia
+    rootDir: backend
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # Supabase transaction pooler (port 6543)
+      - key: DATABASE_URL
+        sync: false
+      # Supabase session pooler (port 5432), used by migrations
+      - key: DIRECT_URL
+        sync: false
+      # GitHub Pages origin, e.g. https://<user>.github.io
+      - key: FRONTEND_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Ferretería Gastón

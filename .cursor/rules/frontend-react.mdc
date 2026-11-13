@@ -1,0 +1,38 @@
+---
+description: React + Vite + Tailwind conventions for the frontend, including GitHub Pages constraints
+globs: frontend/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Frontend (React + Vite + Tailwind)
+
+## Code
+
+- TypeScript, functional components and hooks only.
+- Styling with Tailwind utility classes; no CSS modules or styled-components.
+- Organize by feature: `src/features/<domain>/` (components, hooks, api calls), shared UI in `src/components/`.
+- Component and variable names in English; UI text in Spanish.
+
+```tsx
+// ✅ GOOD
+export function ProductList({ products }: ProductListProps) {
+  return <h2 className="text-lg font-semibold">Productos</h2>;
+}
+```
+
+## API
+
+- Base URL from `import.meta.env.VITE_API_URL`; never hardcode it.
+- All HTTP calls go through a single API client in `src/lib/api.ts` (handles JSON, auth token, errors).
+- Format money with `Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })`. Treat amounts from the API as strings (Decimal), don't do float math for totals shown as final.
+
+## GitHub Pages constraints
+
+- Static hosting only: no server-side code, no secrets in the frontend bundle.
+- Set `base` in `vite.config.ts` to the repo name (e.g. `/facturador_ferreteria_gaston/`).
+- Use `HashRouter` (or a 404.html fallback) so page refreshes don't 404.
+
+## Render free tier
+
+- The API sleeps after inactivity and the first request can take ~30-50 s. Always show a loading state and a clear "conectando con el servidor..." message instead of failing silently.
+- Disable submit buttons while a request is in flight to avoid duplicate sales.
