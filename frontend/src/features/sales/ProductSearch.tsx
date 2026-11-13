@@ -8,6 +8,8 @@ import type { ProductSearchResult } from './types'
 interface ProductSearchProps {
   inputRef: RefObject<HTMLInputElement | null>
   onSelect: (product: ProductSearchResult) => void
+  // Offered when nothing matches (e.g. a scanned code that isn't in the catalog yet)
+  onCreateRequest: (text: string) => void
 }
 
 const MIN_QUERY_LENGTH = 2
@@ -15,11 +17,12 @@ const MIN_QUERY_LENGTH = 2
 // The scanner may send the Code 39 delimiters ("*00001*")
 const normalizeCode = (text: string) => text.replace(/^\*+|\*+$/g, '').toLowerCase()
 
-export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
+export function ProductSearch({ inputRef, onSelect, onCreateRequest }: ProductSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ProductSearchResult[]>([])
   const [resultsFor, setResultsFor] = useState('')
   const [message, setMessage] = useState<string | null>(null)
+  const [notFound, setNotFound] = useState<string | null>(null)
   const [highlighted, setHighlighted] = useState(-1)
   const searchAbort = useRef<AbortController | null>(null)
   const trimmedQuery = query.trim()
@@ -35,12 +38,14 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
       const found = await searchProducts(text, controller.signal)
       setResults(found)
       setHighlighted(-1)
-      setMessage(found.length ? null : `No se encontró ningún producto para «${text}».`)
+      setMessage(null)
+      setNotFound(found.length ? null : text)
       setResultsFor(text)
       return found
     } catch {
       if (controller.signal.aborted) return null
       setResults([])
+      setNotFound(null)
       setMessage('No se pudo buscar. Revisá la conexión.')
       setResultsFor(text)
       return null
@@ -61,6 +66,7 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
     setResults([])
     setResultsFor('')
     setMessage(null)
+    setNotFound(null)
     setHighlighted(-1)
   }
 
@@ -68,6 +74,11 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
     onSelect(product)
     clear()
     inputRef.current?.focus()
+  }
+
+  const requestCreate = (text: string) => {
+    clear()
+    onCreateRequest(text)
   }
 
   // Scanner: frees the input right away so the next code can be scanned while this one
@@ -86,7 +97,8 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
       setQuery((current) => current || text)
       setResults(found)
       setHighlighted(-1)
-      setMessage(found.length ? null : `No se encontró ningún producto para «${text}».`)
+      setMessage(null)
+      setNotFound(found.length ? null : text)
       setResultsFor(text)
     })
   }
@@ -107,6 +119,7 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
     if (highlighted >= 0 && results[highlighted]) return select(results[highlighted])
 
     if (resultsFor === trimmedQuery) {
+      if (notFound === trimmedQuery) return requestCreate(trimmedQuery)
       const exactCode = results.find((p) => p.code.toLowerCase() === normalizeCode(trimmedQuery))
       if (exactCode || results.length === 1) select(exactCode ?? results[0])
       return
@@ -129,6 +142,7 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
             setResults([])
             setResultsFor('')
             setMessage(null)
+            setNotFound(null)
           }
         }}
         onKeyDown={handleKeyDown}
@@ -141,6 +155,18 @@ export function ProductSearch({ inputRef, onSelect }: ProductSearchProps) {
         <span className="absolute top-6 right-5 text-sm text-slate-400">Buscando...</span>
       )}
       {message && <p className="mt-2 text-sm text-slate-600">{message}</p>}
+      {notFound && (
+        <div className="mt-2 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-amber-900">No se encontró ningún producto para «{notFound}».</p>
+          <button
+            type="button"
+            onClick={() => requestCreate(notFound)}
+            className="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700"
+          >
+            Crear producto (Enter)
+          </button>
+        </div>
+      )}
 
       {results.length > 0 && (
         <ul className="mt-2 max-h-[60vh] divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">

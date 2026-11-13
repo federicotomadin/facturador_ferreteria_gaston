@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError } from '../../lib/api'
 import { formatQuantity } from '../../lib/quantity'
+import { NewProductForm } from '../products/NewProductForm'
 import { Cart } from './Cart'
 import { ProductSearch } from './ProductSearch'
 import { createSale } from './api'
@@ -8,7 +9,18 @@ import { checkStock, hasBlockingLine } from './stock-check'
 import type { ProductSearchResult, Sale } from './types'
 import { useCart } from './useCart'
 
-type Notice = { kind: 'error'; text: string } | { kind: 'success'; sale: Sale }
+type Notice =
+  | { kind: 'error'; text: string }
+  | { kind: 'info'; text: string }
+  | { kind: 'success'; sale: Sale }
+
+// A scanned code has no spaces and contains digits; anything else is taken as a product name
+function newProductDraft(text: string) {
+  const looksLikeCode = !/\s/.test(text) && /\d/.test(text)
+  return looksLikeCode
+    ? { code: text.replace(/^\*+|\*+$/g, ''), description: '' }
+    : { code: '', description: text }
+}
 
 function saleErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) {
@@ -25,6 +37,27 @@ export function SalesPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
+  const [newProduct, setNewProduct] = useState<{ code: string; description: string } | null>(null)
+
+  const focusSearch = () => requestAnimationFrame(() => searchRef.current?.focus())
+
+  const closeNewProduct = useCallback(() => {
+    setNewProduct(null)
+    focusSearch()
+  }, [])
+
+  const handleProductCreated = (product: ProductSearchResult) => {
+    closeNewProduct()
+    if (product.stock >= 1) {
+      addProduct(product)
+      setNotice({ kind: 'info', text: `Producto «${product.description}» creado y agregado a la cesta.` })
+    } else {
+      setNotice({
+        kind: 'info',
+        text: `Producto «${product.description}» creado. No se agregó a la cesta porque no tiene stock suficiente.`,
+      })
+    }
+  }
 
   const addProduct = (product: ProductSearchResult) => {
     const check = checkStock(product, cart.quantityInCart(product.id) + 1)
@@ -54,6 +87,7 @@ export function SalesPage() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (newProduct) return
       if (event.key === 'F2') {
         event.preventDefault()
         searchRef.current?.focus()
@@ -65,13 +99,17 @@ export function SalesPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [confirmSale])
+  }, [confirmSale, newProduct])
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
       <section>
         <h1 className="mb-3 text-2xl font-semibold">Venta</h1>
-        <ProductSearch inputRef={searchRef} onSelect={addProduct} />
+        <ProductSearch
+          inputRef={searchRef}
+          onSelect={addProduct}
+          onCreateRequest={(text) => setNewProduct(newProductDraft(text))}
+        />
         <p className="mt-3 text-xs text-slate-500">
           Atajos: F2 buscar · ↑ ↓ elegir · Enter agregar · Esc limpiar · F9 confirmar venta
         </p>
@@ -86,6 +124,14 @@ export function SalesPage() {
         onClear={cart.clear}
         onConfirm={() => void confirmSale()}
       />
+      {newProduct && (
+        <NewProductForm
+          initialCode={newProduct.code}
+          initialDescription={newProduct.description}
+          onCreated={handleProductCreated}
+          onCancel={closeNewProduct}
+        />
+      )}
     </div>
   )
 }
@@ -95,6 +141,16 @@ function SaleNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () => vo
     return (
       <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800">
         {notice.text}
+      </div>
+    )
+  }
+  if (notice.kind === 'info') {
+    return (
+      <div role="status" className="mt-4 flex items-start justify-between gap-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
+        <p>{notice.text}</p>
+        <button type="button" onClick={onDismiss} aria-label="Cerrar aviso" className="text-sky-700">
+          ✕
+        </button>
       </div>
     )
   }
