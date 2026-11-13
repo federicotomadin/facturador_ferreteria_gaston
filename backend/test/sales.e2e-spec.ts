@@ -15,6 +15,7 @@ describe('Products search and sales (e2e)', () => {
   let hammer: { id: number };
   let pipe: { id: number };
   let unpriced: { id: number };
+  let hose: { id: number };
 
   const cleanUp = async () => {
     const products = await prisma.product.findMany({
@@ -39,7 +40,7 @@ describe('Products search and sales (e2e)', () => {
     prisma = app.get(PrismaService);
     await cleanUp();
 
-    [hammer, pipe, unpriced] = await Promise.all([
+    [hammer, pipe, unpriced, hose] = await Promise.all([
       prisma.product.create({
         data: { code: `${CODE_PREFIX}001`, description: 'MARTILLO GALPONERO E2E', salePrice: '1500.50', stock: 10 },
       }),
@@ -48,6 +49,9 @@ describe('Products search and sales (e2e)', () => {
       }),
       prisma.product.create({
         data: { code: `${CODE_PREFIX}003`, description: 'PRODUCTO SIN PRECIO E2E', salePrice: '0', stock: 5 },
+      }),
+      prisma.product.create({
+        data: { code: `${CODE_PREFIX}004`, description: 'MANGUERA CRISTAL E2E X MT', salePrice: '333.33', stock: '92.5' },
       }),
     ]);
   });
@@ -58,7 +62,7 @@ describe('Products search and sales (e2e)', () => {
   });
 
   const stockOf = async (id: number) =>
-    (await prisma.product.findUniqueOrThrow({ where: { id } })).stock;
+    (await prisma.product.findUniqueOrThrow({ where: { id } })).stock.toNumber();
 
   describe('GET /api/products/search', () => {
     it('finds a product by its scanned code, with or without Code 39 asterisks', async () => {
@@ -105,7 +109,9 @@ describe('Products search and sales (e2e)', () => {
       expect(await stockOf(pipe.id)).toBe(1);
 
       const movements = await prisma.stockMovement.findMany({ where: { saleId: body.id } });
-      expect(movements).toEqual(
+      expect(
+        movements.map((m) => ({ ...m, quantity: m.quantity.toNumber(), stockAfter: m.stockAfter.toNumber() })),
+      ).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ productId: hammer.id, type: 'SALE', quantity: -2, stockAfter: 8 }),
           expect.objectContaining({ productId: pipe.id, type: 'SALE', quantity: -2, stockAfter: 1 }),
@@ -137,10 +143,20 @@ describe('Products search and sales (e2e)', () => {
       expect(await stockOf(unpriced.id)).toBe(4);
     });
 
-    it('validates the payload', () => {
-      return request(app.getHttpServer())
+    it('sells decimal quantities of products sold by length', async () => {
+      const { body } = await request(app.getHttpServer())
         .post('/api/sales')
-        .send({ items: [{ productId: hammer.id, quantity: 0 }] })
+        .send({ items: [{ productId: hose.id, quantity: 1.5 }] })
+        .expect(201);
+      expect(body.total).toBe('500');
+      expect(body.items).toEqual([expect.objectContaining({ quantity: 1.5, stockAfter: 91 })]);
+      expect(await stockOf(hose.id)).toBe(91);
+    });
+
+    it.each([0, -1, 1.2345])('rejects quantity %s', async (quantity) => {
+      await request(app.getHttpServer())
+        .post('/api/sales')
+        .send({ items: [{ productId: hammer.id, quantity }] })
         .expect(400);
     });
 

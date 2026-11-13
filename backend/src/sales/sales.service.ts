@@ -23,7 +23,8 @@ export class SalesService {
         if (!product) {
           throw new BadRequestException(`Product ${item.productId} not found or inactive`);
         }
-        return { ...product, quantity: item.quantity, subtotal: product.salePrice.mul(item.quantity) };
+        const quantity = new Prisma.Decimal(item.quantity);
+        return { ...product, quantity, subtotal: product.salePrice.mul(quantity).toDecimalPlaces(2) };
       });
 
       const results = [];
@@ -61,7 +62,7 @@ export class SalesService {
               data: results.map((r) => ({
                 productId: r.id,
                 type: 'SALE' as const,
-                quantity: -r.quantity,
+                quantity: r.quantity.neg(),
                 stockAfter: r.stockAfter,
               })),
             },
@@ -76,8 +77,8 @@ export class SalesService {
           productId: r.id,
           code: r.code,
           description: r.description,
-          quantity: r.quantity,
-          stockAfter: r.stockAfter,
+          quantity: r.quantity.toNumber(),
+          stockAfter: r.stockAfter.toNumber(),
           minStock: r.minStock,
         })),
       };

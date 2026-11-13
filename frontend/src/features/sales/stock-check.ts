@@ -1,3 +1,4 @@
+import { formatQuantity, hasValidPrecision, roundQuantity } from '../../lib/quantity'
 import type { CartLine, ProductSearchResult } from './types'
 
 export type StockCheck =
@@ -8,14 +9,17 @@ export type StockCheck =
 
 // Below or at the minimum warns but allows the sale; above the available stock blocks it
 export function checkStock(product: ProductSearchResult, quantity: number): StockCheck {
-  if (!Number.isInteger(quantity) || quantity < 1) {
+  if (!(quantity > 0)) {
     return { level: 'invalid', message: 'Ingresá una cantidad.' }
   }
-  const remaining = product.stock - quantity
+  if (!hasValidPrecision(quantity)) {
+    return { level: 'invalid', message: 'Usá hasta 3 decimales.' }
+  }
+  const remaining = roundQuantity(product.stock - quantity)
   if (remaining < 0) {
     return {
       level: 'error',
-      message: `Stock insuficiente para la cantidad ingresada (disponible: ${product.stock}).`,
+      message: `Stock insuficiente para la cantidad ingresada (disponible: ${formatQuantity(product.stock)}).`,
     }
   }
   if (remaining <= product.minStock) {
@@ -24,7 +28,7 @@ export function checkStock(product: ProductSearchResult, quantity: number): Stoc
       message:
         remaining === 0
           ? 'Atención: con esta venta el stock queda en 0.'
-          : `Atención: quedarán ${remaining} (stock mínimo: ${product.minStock}).`,
+          : `Atención: quedarán ${formatQuantity(remaining)} (stock mínimo: ${product.minStock}).`,
     }
   }
   return { level: 'ok' }

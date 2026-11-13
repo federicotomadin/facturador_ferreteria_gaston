@@ -1,13 +1,14 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, IsNumber, Max, Min, ValidateNested } from 'class-validator';
 
 export class SaleItemDto {
   @IsInt()
   @Min(1)
   productId: number;
 
-  @IsInt()
-  @Min(1)
+  // Up to 3 decimals for products sold by length or weight (e.g. 1.5 m)
+  @IsNumber({ maxDecimalPlaces: 3, allowNaN: false, allowInfinity: false })
+  @Min(0.001)
   @Max(100_000)
   quantity: number;
 }

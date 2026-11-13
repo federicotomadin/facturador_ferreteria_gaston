@@ -8,6 +8,7 @@ export interface ProductSearchResult {
   code: string;
   description: string;
   salePrice: Prisma.Decimal;
+  // Cast to float8 in SQL: up to 3 decimals fit exactly and the JSON gets a number, not a string
   stock: number;
   minStock: number;
   categoryName: string | null;
@@ -33,7 +34,7 @@ export class ProductsService {
     );
 
     return this.prisma.$queryRaw<ProductSearchResult[]>`
-      SELECT p."id", p."code", p."description", p."salePrice", p."stock", p."minStock",
+      SELECT p."id", p."code", p."description", p."salePrice", p."stock"::float8 AS "stock", p."minStock",
              c."name" AS "categoryName"
       FROM "Product" p
       LEFT JOIN "Category" c ON c."id" = p."categoryId"

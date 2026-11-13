@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError } from '../../lib/api'
+import { formatQuantity } from '../../lib/quantity'
 import { Cart } from './Cart'
 import { ProductSearch } from './ProductSearch'
 import { createSale } from './api'
@@ -98,13 +99,14 @@ function SaleNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () => vo
     )
   }
 
-  const units = notice.sale.items.reduce((sum, i) => sum + i.quantity, 0)
+  const productCount = notice.sale.items.length
   const toRestock = notice.sale.items.filter((i) => i.stockAfter <= i.minStock)
   return (
     <div role="status" className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
       <div className="flex items-start justify-between gap-4">
         <p className="font-medium text-emerald-800">
-          Venta registrada: se descontaron {units} {units === 1 ? 'unidad' : 'unidades'} del stock.
+          Venta registrada: se descontó el stock de {productCount}{' '}
+          {productCount === 1 ? 'producto' : 'productos'}.
         </p>
         <button type="button" onClick={onDismiss} aria-label="Cerrar aviso" className="text-emerald-700">
           ✕
@@ -116,7 +118,7 @@ function SaleNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () => vo
           <ul className="mt-1 list-disc pl-5">
             {toRestock.map((item) => (
               <li key={item.productId}>
-                {item.description}: quedan {item.stockAfter} (mínimo {item.minStock})
+                {item.description}: quedan {formatQuantity(item.stockAfter)} (mínimo {item.minStock})
               </li>
             ))}
           </ul>

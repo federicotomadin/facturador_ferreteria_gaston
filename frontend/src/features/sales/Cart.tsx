@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { formatCents, formatCurrency, toCents } from '../../lib/format'
+import { formatQuantity, parseQuantity, roundQuantity } from '../../lib/quantity'
 import { checkStock, hasBlockingLine, isBlocking } from './stock-check'
 import type { CartLine } from './types'
+import { lineCents } from './useCart'
 
 interface CartProps {
   lines: CartLine[]
@@ -17,6 +20,38 @@ const MESSAGE_STYLES = {
   invalid: 'text-red-700',
   warning: 'text-amber-700',
 } as const
+
+interface QuantityInputProps {
+  quantity: number
+  onChange: (quantity: number) => void
+  label: string
+  invalid: boolean
+}
+
+// Text input instead of type="number": it must accept the es-AR decimal comma ("1,5")
+function QuantityInput({ quantity, onChange, label, invalid }: QuantityInputProps) {
+  const [text, setText] = useState('')
+  // Keep what the user is typing ("1," or "1,50") unless the quantity changed elsewhere (+/−, rescan)
+  const shown = (parseQuantity(text) ?? 0) === quantity ? text : String(quantity).replace('.', ',')
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={shown}
+      onChange={(event) => {
+        setText(event.target.value)
+        onChange(parseQuantity(event.target.value) ?? 0)
+      }}
+      onFocus={(event) => event.target.select()}
+      aria-label={label}
+      aria-invalid={invalid}
+      className={`h-9 w-20 rounded border text-center text-lg ${
+        invalid ? 'border-red-500 bg-red-50' : 'border-slate-300'
+      }`}
+    />
+  )
+}
 
 export function Cart({
   lines,
@@ -58,7 +93,7 @@ export function Cart({
                   <div>
                     <p className="font-medium">{product.description}</p>
                     <p className="text-xs text-slate-500">
-                      {product.code} · Stock {product.stock}
+                      {product.code} · Stock {formatQuantity(product.stock)}
                       {hasPrice && ` · ${formatCurrency(product.salePrice)} c/u`}
                     </p>
                   </div>
@@ -75,36 +110,23 @@ export function Cart({
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => onQuantityChange(product.id, quantity - 1)}
-                      disabled={quantity <= 1}
+                      onClick={() => onQuantityChange(product.id, roundQuantity(quantity - 1))}
+                      disabled={quantity < 2}
                       aria-label="Restar uno"
                       className="h-9 w-9 rounded border border-slate-300 disabled:opacity-40"
                     >
                       −
                     </button>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      inputMode="numeric"
-                      value={quantity || ''}
-                      onChange={(event) => {
-                        const value = Math.floor(Number(event.target.value))
-                        onQuantityChange(product.id, value > 0 ? value : 0)
-                      }}
-                      onFocus={(event) => event.target.select()}
-                      aria-label={`Cantidad de ${product.description}`}
-                      aria-invalid={isBlocking(check)}
-                      className={`h-9 w-20 rounded border text-center text-lg ${
-                        isBlocking(check)
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-slate-300'
-                      }`}
+                    <QuantityInput
+                      quantity={quantity}
+                      onChange={(value) => onQuantityChange(product.id, value)}
+                      label={`Cantidad de ${product.description}`}
+                      invalid={isBlocking(check)}
                     />
                     <button
                       type="button"
-                      onClick={() => onQuantityChange(product.id, quantity + 1)}
-                      disabled={quantity >= product.stock}
+                      onClick={() => onQuantityChange(product.id, roundQuantity(quantity + 1))}
+                      disabled={quantity + 1 > product.stock}
                       aria-label="Sumar uno"
                       className="h-9 w-9 rounded border border-slate-300 disabled:opacity-40"
                     >
@@ -112,7 +134,7 @@ export function Cart({
                     </button>
                   </div>
                   <span className="font-medium">
-                    {hasPrice ? formatCents(toCents(product.salePrice) * quantity) : '—'}
+                    {hasPrice ? formatCents(lineCents({ product, quantity })) : '—'}
                   </span>
                 </div>
                 {check.level !== 'ok' && (

@@ -10,10 +10,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
 import { Prisma, PrismaClient } from '../../src/generated/prisma/client.js';
 import { CATEGORIES } from './category-rules.js';
 import { parsePriceList, type ImportIssue } from './price-list.js';
+import { countByType, toReviewCsv } from './review-csv.js';
 
 const BATCH_SIZE = 500;
 
@@ -88,23 +88,13 @@ try {
   await prisma.$disconnect();
 }
 
-function toReviewCsv(list: ImportIssue[]): string {
-  return stringify(
-    list.map((i) => [i.type, i.sourceRow, i.code, i.description, i.detail ?? '']),
-    { header: true, columns: ['issue', 'row', 'code', 'description', 'detail'] },
-  );
-}
-
 function printSummary(productCount: number, list: ImportIssue[], reviewFile: string) {
   const byCategory = Object.groupBy(products, (p) => p.category);
-  const byIssue = Object.groupBy(list, (i) => i.type);
   console.log(`Products parsed: ${productCount}`);
   console.table(
     Object.fromEntries(Object.entries(byCategory).map(([slug, items]) => [slug, items?.length ?? 0])),
   );
   console.log('Issues:');
-  console.table(
-    Object.fromEntries(Object.entries(byIssue).map(([type, items]) => [type, items?.length ?? 0])),
-  );
+  console.table(countByType(list));
   console.log(`Review file: ${reviewFile}`);
 }

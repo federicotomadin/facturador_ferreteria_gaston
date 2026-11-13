@@ -23,7 +23,8 @@
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev && prisma generate",
     "db:deploy": "prisma migrate deploy",
-    "import:prices": "tsx prisma/import/import-price-list.ts"
+    "import:prices": "tsx prisma/import/import-price-list.ts",
+    "import:stock": "tsx prisma/import/import-stock.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -55,6 +56,7 @@
     "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.4.2",
     "prisma": "^7.10.1",
+    "read-excel-file": "^9.3.15",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "tsx": "^4.23.15",

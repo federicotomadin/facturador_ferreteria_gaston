@@ -45,6 +45,21 @@ The import is safe to re-run: products are upserted by code, and stock, cost, mi
 manually changed categories are kept. Every problem found (zero prices, duplicated codes,
 uncategorized products...) is written to `import-review.csv` next to the input file.
 
+### Initial stock
+
+The "Stock" sheet of the store's spreadsheet (`.xlsx`, also gitignored) loads `Saldo` as the stock
+and `Costo` as the cost. Products missing from the price list are created with price 0.
+
+```bash
+cd backend
+npm run import:stock -- "../28-09-2026 LISTA FERRETERIA ROOFTECH.xlsx" --dry-run
+npm run import:stock -- "../28-09-2026 LISTA FERRETERIA ROOFTECH.xlsx"
+```
+
+It can be re-run until the first sale; after that it refuses (it would undo the sales) unless
+`--force` is passed. Negative or invalid balances, duplicated codes, etc. go to
+`import-stock-review.csv`.
+
 ## Tests
 
 ```bash

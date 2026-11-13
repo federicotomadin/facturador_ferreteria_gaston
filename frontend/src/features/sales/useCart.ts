@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toCents } from '../../lib/format'
+import { roundQuantity } from '../../lib/quantity'
 import type { CartLine, ProductSearchResult } from './types'
+
+// Decimal quantities (1,5 m) can produce fractions of a cent; rounded like the backend
+export function lineCents({ product, quantity }: CartLine): number {
+  return Math.round(toCents(product.salePrice) * quantity)
+}
 
 type Action =
   | { type: 'addOne'; product: ProductSearchResult }
@@ -17,7 +23,7 @@ function reducer(lines: CartLine[], action: Action): CartLine[] {
       if (!existing) return [...lines, { product: action.product, quantity: 1 }]
       // Refresh the product snapshot so the stock shown is the latest one searched
       return lines.map((l) =>
-        l === existing ? { product: action.product, quantity: l.quantity + 1 } : l,
+        l === existing ? { product: action.product, quantity: roundQuantity(l.quantity + 1) } : l,
       )
     }
     case 'setQuantity':
@@ -55,7 +61,7 @@ export function useCart() {
   }, [lines])
 
   const totalCents = useMemo(
-    () => lines.reduce((sum, l) => sum + toCents(l.product.salePrice) * l.quantity, 0),
+    () => lines.reduce((sum, l) => sum + lineCents(l), 0),
     [lines],
   )
 

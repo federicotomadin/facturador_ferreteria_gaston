@@ -13,4 +13,13 @@ describe('mergeItems', () => {
       { productId: 1, quantity: 3 },
     ]);
   });
+
+  it('adds decimal quantities without float drift', () => {
+    expect(
+      mergeItems([
+        { productId: 1, quantity: 0.1 },
+        { productId: 1, quantity: 0.2 },
+      ]),
+    ).toEqual([{ productId: 1, quantity: 0.3 }]);
+  });
 });
