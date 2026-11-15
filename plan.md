@@ -59,6 +59,7 @@ Versiones: Node 24, NestJS 12, Prisma 7, React 19, Vite 8, Tailwind 4. En local,
 - [x] Si con la venta el producto queda en el stock mínimo o por debajo, se muestra un aviso, pero se puede seguir.
 - [x] Si la cantidad supera el stock disponible, se muestra "Stock insuficiente para la cantidad ingresada" y no se puede confirmar. Un producto con stock 0 no se agrega.
 - [x] "Confirmar venta" (F9) descuenta el stock y muestra qué productos hay que reponer.
+- [x] Si el código escaneado no existe, se puede dar de alta el producto ahí mismo (código, descripción, cantidad, costo, precio, stock mínimo y categoría). Si tiene stock, se agrega a la cesta.
 - Los productos sin precio se pueden vender igual; el total en pesos es solo de referencia.
 - Sin stock cargado no se puede vender. Por eso hay que cargar la planilla de stock antes de empezar a usar el sistema en el local.
 - [ ] Anular una venta (devuelve el stock).
